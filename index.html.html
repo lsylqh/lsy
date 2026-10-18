@@ -1,0 +1,808 @@
+<html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LAN SHI - 蓝氏 (Final)</title>
+    <style>
+        /* ==================== CSS 样式 (保持原有高质量视觉) ==================== */
+        :root {
+            --primary-blue: #1e3a8a;
+            --accent-gold: #fbbf24;
+            --text-white: #f8fafc;
+            --danger-red: #ef4444;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+
+        body {
+            height: 100vh; width: 100vw;
+            background-color: #0f172a;
+            color: var(--text-white);
+            font-family: 'Georgia', serif;
+            overflow: hidden;
+            position: relative;
+            touch-action: none;
+        }
+
+        /* 开场动画层 */
+        #introCanvas {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 999; background-color: #000;
+            transition: opacity 1s ease-out;
+        }
+
+        /* 主界面 */
+        #main-interface {
+            width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0;
+            display: flex; justify-content: center; align-items: center;
+            background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
+            z-index: 10; transition: opacity 0.5s ease;
+        }
+
+        .particles {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; overflow: hidden; pointer-events: none;
+        }
+        .particle {
+            position: absolute; background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%; animation: floatUp linear infinite;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            50% { opacity: 0.5; }
+            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+        }
+
+        .content-wrapper { text-align: center; z-index: 10; padding: 2rem; opacity: 0; transform: scale(0.9); animation: fadeInScale 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        @keyframes fadeInScale { to { opacity: 1; transform: scale(1); } }
+
+        h1.main-title {
+            font-size: 5rem; font-weight: 700; letter-spacing: 0.5em; margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #ffffff, #94a3b8, #ffffff);
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+            text-shadow: 0 0 30px rgba(255,255,255,0.1);
+        }
+
+        .divider { width: 0; height: 2px; background: var(--accent-gold); margin: 1rem auto; animation: expandWidth 1s 0.5s forwards ease-out; }
+        @keyframes expandWidth { to { width: 100px; } }
+
+        h2.sub-title { font-size: 2rem; font-weight: 300; letter-spacing: 0.2em; color: rgba(255, 255, 255, 0.9); margin-bottom: 2rem; opacity: 0; animation: fadeIn 1s 1s forwards; }
+        @keyframes fadeIn { to { opacity: 1; } }
+
+        .btn-group { display: flex; flex-direction: column; gap: 15px; align-items: center; opacity: 0; animation: fadeIn 1s 1.5s forwards; }
+
+        .action-btn {
+            background: transparent; color: var(--text-white);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 40px; font-size: 1rem; letter-spacing: 2px;
+            cursor: pointer; transition: all 0.4s ease;
+            font-family: inherit; min-width: 200px; position: relative; overflow: hidden;
+        }
+
+        .enter-btn:hover { border-color: var(--accent-gold); color: var(--accent-gold); box-shadow: 0 0 20px rgba(251, 191, 36, 0.2); }
+        
+        .download-btn { border-color: rgba(59, 130, 246, 0.5); background: rgba(59, 130, 246, 0.1); }
+        .download-btn:hover { border-color: #60a5fa; background: rgba(59, 130, 246, 0.2); color: #60a5fa; box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+        
+        .share-btn { border-color: rgba(16, 185, 129, 0.5); background: rgba(16, 185, 129, 0.1); }
+        .share-btn:hover { border-color: #34d399; background: rgba(16, 185, 129, 0.2); color: #34d399; box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); }
+
+        .action-btn.active { opacity: 0.7; pointer-events: none; }
+
+        .credits {
+            position: absolute; bottom: 2rem; width: 100%; text-align: center;
+            font-size: 0.85rem; color: rgba(255, 255, 255, 0.4); letter-spacing: 1px;
+            opacity: 0; animation: fadeIn 1.5s 2s forwards; pointer-events: none;
+        }
+
+        /* 弹窗 */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px);
+            z-index: 100; display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: all 0.4s ease;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: rgba(30, 41, 59, 0.95); border: 1px solid var(--accent-gold);
+            padding: 3rem 4rem; border-radius: 8px; text-align: center;
+            transform: translateY(20px); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        .modal-text { font-size: 1.8rem; color: var(--text-white); margin-bottom: 1.5rem; letter-spacing: 2px; }
+        .close-btn {
+            background: transparent; border: 1px solid rgba(255,255,255,0.3);
+            color: rgba(255,255,255,0.7); padding: 8px 24px; cursor: pointer; transition: 0.3s; font-family: inherit;
+        }
+        .close-btn:hover { background: var(--accent-gold); color: #0f172a; border-color: var(--accent-gold); }
+
+        /* 游戏界面 */
+        #game-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 50; display: none; background: #050510;
+        }
+        #gameCanvas { display: block; width: 100%; height: 100%; }
+        
+        #game-hud {
+            position: absolute; top: 20px; left: 20px; right: 20px;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            pointer-events: none; z-index: 51;
+        }
+        .hp-bar-container { width: 40%; max-width: 300px; }
+        .hp-label { font-size: 1.2rem; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); font-weight: bold; }
+        .hp-bar-bg { width: 100%; height: 20px; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.3); border-radius: 10px; overflow: hidden; position: relative; }
+        .hp-bar-fill { height: 100%; transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 8px; position: relative; }
+        .hp-bar-fill::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 50%; background: linear-gradient(to bottom, rgba(255,255,255,0.3), transparent); }
+        #player-hp-fill { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+        #enemy-hp-fill { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+        #game-over-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px);
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 52;
+        }
+        #game-over-screen.active { display: flex; }
+        #game-over-screen h2 { font-size: 3.5rem; color: var(--accent-gold); margin-bottom: 1rem; letter-spacing: 5px; text-transform: uppercase; text-shadow: 0 0 20px rgba(251, 191, 36, 0.5); }
+        #game-over-screen p { font-size: 1.5rem; margin-bottom: 2rem; color: rgba(255,255,255,0.8); }
+        .restart-btn {
+            background: transparent; border: 2px solid var(--accent-gold); color: var(--accent-gold);
+            padding: 12px 30px; font-size: 1.2rem; cursor: pointer; transition: 0.3s; font-family: inherit; letter-spacing: 2px;
+        }
+        .restart-btn:hover { background: var(--accent-gold); color: #0f172a; box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
+
+        .mobile-controls-hint {
+            position: absolute; bottom: 20px; width: 100%; text-align: center;
+            color: rgba(255,255,255,0.3); font-size: 0.9rem; pointer-events: none; display: none; z-index: 51;
+        }
+        .touch-feedback {
+            position: absolute; border-radius: 50%; background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3); transform: translate(-50%, -50%) scale(0);
+            pointer-events: none; transition: transform 0.1s; z-index: 49;
+        }
+        .touch-feedback.active { transform: translate(-50%, -50%) scale(1); background: rgba(255, 255, 255, 0.2); }
+
+        @media (max-width: 768px) {
+            .mobile-controls-hint { display: block; }
+            h1.main-title { font-size: 3rem; letter-spacing: 0.3em; }
+            h2.sub-title { font-size: 1.5rem; }
+            .modal-content { padding: 2rem; width: 80%; }
+            .credits { font-size: 0.75rem; bottom: 1.5rem; }
+            .hp-bar-container { width: 45%; }
+            .hp-label { font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. 开场动画 Canvas -->
+    <canvas id="introCanvas" width="938" height="683" style="width: 751px; height: 547px; opacity: 0; display: none;"></canvas>
+
+    <!-- 2. 主界面 -->
+    <div id="main-interface">
+        <div class="particles" id="particles"><div class="particle" style="width: 3.55829px; height: 3.55829px; left: 87.1019%; animation-duration: 17.805s; animation-delay: -4.74254s;"></div><div class="particle" style="width: 2.49847px; height: 2.49847px; left: 86.1749%; animation-duration: 12.8367s; animation-delay: -1.18506s;"></div><div class="particle" style="width: 2.59526px; height: 2.59526px; left: 99.5334%; animation-duration: 10.7391s; animation-delay: -4.04847s;"></div><div class="particle" style="width: 2.11421px; height: 2.11421px; left: 57.2261%; animation-duration: 12.1704s; animation-delay: -2.60625s;"></div><div class="particle" style="width: 3.89882px; height: 3.89882px; left: 2.57659%; animation-duration: 19.9444s; animation-delay: -3.15415s;"></div><div class="particle" style="width: 2.79353px; height: 2.79353px; left: 18.2133%; animation-duration: 15.6357s; animation-delay: -0.734785s;"></div><div class="particle" style="width: 3.26901px; height: 3.26901px; left: 33.992%; animation-duration: 16.6635s; animation-delay: -4.68439s;"></div><div class="particle" style="width: 3.98928px; height: 3.98928px; left: 85.7768%; animation-duration: 16.4721s; animation-delay: -1.40207s;"></div><div class="particle" style="width: 1.05039px; height: 1.05039px; left: 36.2311%; animation-duration: 16.417s; animation-delay: -1.03268s;"></div><div class="particle" style="width: 2.58704px; height: 2.58704px; left: 2.06114%; animation-duration: 19.7205s; animation-delay: -4.50635s;"></div><div class="particle" style="width: 3.15037px; height: 3.15037px; left: 76.9563%; animation-duration: 10.7443s; animation-delay: -0.213588s;"></div><div class="particle" style="width: 1.19281px; height: 1.19281px; left: 34.7457%; animation-duration: 15.9283s; animation-delay: -3.07825s;"></div><div class="particle" style="width: 3.24498px; height: 3.24498px; left: 49.6275%; animation-duration: 14.7006s; animation-delay: -1.1299s;"></div><div class="particle" style="width: 2.72149px; height: 2.72149px; left: 26.3421%; animation-duration: 18.0597s; animation-delay: -2.01498s;"></div><div class="particle" style="width: 3.85189px; height: 3.85189px; left: 33.1674%; animation-duration: 15.4017s; animation-delay: -4.94593s;"></div><div class="particle" style="width: 2.06009px; height: 2.06009px; left: 70.1371%; animation-duration: 11.3065s; animation-delay: -4.1989s;"></div><div class="particle" style="width: 1.87466px; height: 1.87466px; left: 87.5861%; animation-duration: 19.252s; animation-delay: -4.42679s;"></div><div class="particle" style="width: 1.02765px; height: 1.02765px; left: 7.9305%; animation-duration: 14.0913s; animation-delay: -3.38193s;"></div><div class="particle" style="width: 1.73584px; height: 1.73584px; left: 42.7732%; animation-duration: 19.7093s; animation-delay: -0.733405s;"></div><div class="particle" style="width: 1.2621px; height: 1.2621px; left: 37.9568%; animation-duration: 15.37s; animation-delay: -2.28417s;"></div><div class="particle" style="width: 1.72248px; height: 1.72248px; left: 29.0492%; animation-duration: 11.8621s; animation-delay: -0.67449s;"></div><div class="particle" style="width: 3.16981px; height: 3.16981px; left: 32.8779%; animation-duration: 10.5142s; animation-delay: -2.15678s;"></div><div class="particle" style="width: 3.48982px; height: 3.48982px; left: 3.6268%; animation-duration: 12.7826s; animation-delay: -1.50539s;"></div><div class="particle" style="width: 1.07823px; height: 1.07823px; left: 83.7118%; animation-duration: 12.4075s; animation-delay: -0.782887s;"></div><div class="particle" style="width: 1.43604px; height: 1.43604px; left: 89.7822%; animation-duration: 11.635s; animation-delay: -0.622578s;"></div><div class="particle" style="width: 3.87557px; height: 3.87557px; left: 11.8265%; animation-duration: 14.4202s; animation-delay: -2.12506s;"></div><div class="particle" style="width: 1.66873px; height: 1.66873px; left: 54.5661%; animation-duration: 19.517s; animation-delay: -2.8076s;"></div><div class="particle" style="width: 2.11278px; height: 2.11278px; left: 93.1106%; animation-duration: 19.4745s; animation-delay: -0.209489s;"></div><div class="particle" style="width: 2.27054px; height: 2.27054px; left: 15.1679%; animation-duration: 13.5293s; animation-delay: -4.91946s;"></div><div class="particle" style="width: 2.73652px; height: 2.73652px; left: 95.6235%; animation-duration: 16.5859s; animation-delay: -4.35148s;"></div></div>
+        <div class="content-wrapper">
+            <h1 class="main-title">LAN SHI</h1>
+            <div class="divider"></div>
+            <h2 class="sub-title">蓝 氏</h2>
+            
+            <div class="btn-group">
+                <button class="action-btn enter-btn" onclick="showWelcome()">开始游戏</button>
+                <button class="action-btn download-btn active" id="downloadBtn" onclick="handleRealDownload()"><span style="margin-right: 8px;">↻</span> 正在生成资源包...</button>
+                <button class="action-btn share-btn" id="shareBtn" onclick="handleRealShare()">
+                    <span style="margin-right: 8px;">🔗</span> 分享本作
+                </button>
+            </div>
+        </div>
+        <div class="credits">由蓝诗彧与露清寒制作</div>
+    </div>
+
+    <!-- 3. 欢迎弹窗 -->
+    <div class="modal-overlay" id="welcomeModal">
+        <div class="modal-content">
+            <div class="modal-text">欢迎进入蓝氏</div>
+            <button class="close-btn" onclick="startGame()">确 认</button>
+        </div>
+    </div>
+
+    <!-- 4. 游戏界面容器 -->
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="touch-layer"></div>
+        
+        <div id="game-hud">
+            <div class="hp-bar-container">
+                <div class="hp-label" style="text-align: left; color: #60a5fa;">蓝氏 (Player)</div>
+                <div class="hp-bar-bg"><div class="hp-bar-fill" id="player-hp-fill" style="width: 100%;"></div></div>
+            </div>
+            <div class="hp-bar-container" style="text-align: right;">
+                <div class="hp-label" style="text-align: right; color: #f87171;">邪气 (Enemy)</div>
+                <div class="hp-bar-bg"><div class="hp-bar-fill" id="enemy-hp-fill" style="width: 100%;"></div></div>
+            </div>
+        </div>
+        
+        <div class="mobile-controls-hint">左侧移动 | 右侧上跳 / 下攻 / 双指格挡</div>
+
+        <div id="game-over-screen">
+            <h2 id="result-text">GAME OVER</h2>
+            <p id="result-desc">邪气未除，再接再厉</p>
+            <button class="restart-btn" onclick="restartGame()">RESTART</button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 全局状态管理
+        // ==========================================
+        let currentPhase = 'intro'; 
+
+        // ==========================================
+        // 第一部分：开场动画 (Canvas)
+        // ==========================================
+        const introCanvas = document.getElementById('introCanvas');
+        const ictx = introCanvas.getContext('2d');
+        
+        function resizeIntroCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            introCanvas.width = window.innerWidth * dpr;
+            introCanvas.height = window.innerHeight * dpr;
+            introCanvas.style.width = window.innerWidth + 'px';
+            introCanvas.style.height = window.innerHeight + 'px';
+            ictx.scale(dpr, dpr);
+        }
+        window.addEventListener('resize', resizeIntroCanvas);
+        resizeIntroCanvas();
+
+        let introState = 'playing'; 
+        let introStart = performance.now();
+        let readyStart = 0;
+
+        function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+        function drawIntroBg(timestamp) {
+            let offset = Math.sin(timestamp / 2000) * 10; 
+            let gradient = ictx.createLinearGradient(0, offset, 0, window.innerHeight + offset);
+            gradient.addColorStop(0, '#0a0a2a');
+            gradient.addColorStop(1, '#2a0a3a');
+            ictx.fillStyle = gradient;
+            ictx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+        }
+
+        function drawIntroElements(progress, timestamp) {
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            
+            let startY = window.innerHeight;
+            let endY = centerY - 50;
+            let currentY = startY - (startY - endY) * easeOutCubic(progress);
+            
+            ictx.font = `bold ${Math.min(64, window.innerWidth / 10)}px sans-serif`;
+            ictx.textAlign = 'center';
+            ictx.textBaseline = 'middle';
+            
+            let textGradient = ictx.createLinearGradient(centerX - 150, currentY, centerX + 150, currentY);
+            textGradient.addColorStop(0, '#ff6b6b');
+            textGradient.addColorStop(1, '#4ecdc4');
+            ictx.fillStyle = textGradient;
+            ictx.fillText('LAN SHI', centerX, currentY);
+
+            const scale = Math.min(window.innerWidth / 800, window.innerHeight / 600);
+            const balls = [
+                { color: '#ffd166', p0: {x: centerX - 250*scale, y: window.innerHeight}, p1: {x: centerX - 150*scale, y: centerY - 100*scale}, p2: {x: centerX, y: centerY - 50*scale} },
+                { color: '#06d6a0', p0: {x: centerX, y: window.innerHeight + 50}, p1: {x: centerX, y: centerY - 150*scale}, p2: {x: centerX, y: centerY - 50*scale} },
+                { color: '#118ab2', p0: {x: centerX + 250*scale, y: window.innerHeight}, p1: {x: centerX + 150*scale, y: centerY - 100*scale}, p2: {x: centerX, y: centerY - 50*scale} }
+            ];
+
+            balls.forEach(ball => {
+                let t = progress;
+                let x = Math.pow(1-t, 2)*ball.p0.x + 2*(1-t)*t*ball.p1.x + Math.pow(t, 2)*ball.p2.x;
+                let y = Math.pow(1-t, 2)*ball.p0.y + 2*(1-t)*t*ball.p1.y + Math.pow(t, 2)*ball.p2.y;
+                
+                ictx.beginPath();
+                ictx.arc(x, y, 8 * scale, 0, Math.PI * 2);
+                ictx.fillStyle = ball.color;
+                ictx.shadowBlur = 20;
+                ictx.shadowColor = ball.color;
+                ictx.fill();
+                ictx.shadowBlur = 0; 
+            });
+        }
+
+        function introLoop(timestamp) {
+            if (introState === 'finished') return;
+            ictx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+            if (introState === 'playing') {
+                let elapsed = timestamp - introStart;
+                let progress = Math.min(elapsed / 5000, 1);
+                drawIntroBg(timestamp);
+                drawIntroElements(progress, timestamp);
+                if (progress >= 1) { introState = 'ready'; readyStart = timestamp; }
+            } else if (introState === 'ready') {
+                let elapsed = timestamp - readyStart;
+                ictx.fillStyle = '#050510'; 
+                ictx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+                ictx.font = '24px sans-serif';
+                ictx.fillStyle = '#ffffff';
+                ictx.textAlign = 'center';
+                ictx.textBaseline = 'middle';
+                ictx.fillText('Ready?', window.innerWidth / 2, window.innerHeight / 2);
+                if (elapsed >= 3000) finishIntro();
+            }
+            requestAnimationFrame(introLoop);
+        }
+
+        function finishIntro() {
+            introState = 'finished';
+            introCanvas.style.opacity = '0';
+            setTimeout(() => { introCanvas.style.display = 'none'; currentPhase = 'menu'; }, 1000);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (currentPhase === 'intro' && (introState === 'playing' || introState === 'ready')) {
+                finishIntro();
+            }
+        });
+
+        requestAnimationFrame(introLoop);
+
+        // ==========================================
+        // 第二部分：主界面与弹窗逻辑
+        // ==========================================
+        
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 30; i++) {
+                const p = document.createElement('div');
+                p.classList.add('particle');
+                const size = Math.random() * 3 + 1;
+                p.style.width = `${size}px`; p.style.height = `${size}px`;
+                p.style.left = `${Math.random() * 100}%`;
+                p.style.animationDuration = `${Math.random() * 10 + 10}s`;
+                p.style.animationDelay = `-${Math.random() * 5}s`;
+                container.appendChild(p);
+            }
+        }
+        window.onload = createParticles;
+
+        function showWelcome() {
+            document.getElementById('welcomeModal').classList.add('active');
+        }
+
+        function startGame() {
+            document.getElementById('welcomeModal').classList.remove('active');
+            document.getElementById('main-interface').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('main-interface').style.display = 'none';
+                document.getElementById('game-container').style.display = 'block';
+                currentPhase = 'game';
+                initGame();
+            }, 500);
+        }
+
+        // ==========================================
+        // 第三部分：真实下载与分享逻辑 (核心更新)
+        // ==========================================
+
+        /**
+         * 真实分享逻辑
+         * 1. 优先使用 Web Share API (移动端原生分享)
+         * 2. 降级使用 Clipboard API (复制到剪贴板)
+         */
+        async function handleRealShare() {
+            const btn = document.getElementById('shareBtn');
+            const originalText = btn.innerHTML;
+            
+            const shareData = {
+                title: 'LAN SHI - 蓝氏',
+                text: '快来体验这款由蓝诗彧与露清寒制作的格斗游戏！',
+                url: window.location.href
+            };
+
+            try {
+                if (navigator.share) {
+                    // 真实调用系统分享面板
+                    await navigator.share(shareData);
+                    console.log('分享成功');
+                } else {
+                    // 降级：复制到剪贴板
+                    await navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}\n${shareData.url}`);
+                    alert('链接已复制到剪贴板，快去分享给朋友吧！');
+                }
+            } catch (err) {
+                console.error('分享失败:', err);
+            } finally {
+                btn.classList.add('active');
+                btn.innerHTML = '<span style="margin-right: 8px;">✓</span> 已分享';
+                setTimeout(() => {
+                    btn.classList.remove('active');
+                    btn.innerHTML = originalText;
+                }, 2000);
+            }
+        }
+
+        /**
+         * 真实下载逻辑
+         * 由于没有后端服务器提供 APK/EXE，这里实现“前端打包下载”
+         * 将当前页面的完整 HTML 代码打包成 .html 文件供用户下载保存
+         */
+        function handleRealDownload() {
+            const btn = document.getElementById('downloadBtn');
+            const originalText = btn.innerHTML;
+            
+            btn.classList.add('active');
+            btn.innerHTML = '<span style="margin-right: 8px;">↻</span> 正在生成资源包...';
+
+            setTimeout(() => {
+                // 获取当前文档的完整 HTML
+                const htmlContent = document.documentElement.outerHTML;
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                
+                // 创建临时链接触发下载
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'LAN_SHI_Offline_Game.html'; // 下载文件名
+                document.body.appendChild(a);
+                a.click();
+                
+                // 清理
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                btn.classList.remove('active');
+                btn.innerHTML = '<span style="margin-right: 8px;">✓</span> 下载完成';
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 3000);
+            }, 800);
+        }
+
+        // ==========================================
+        // 第四部分：2D 格斗游戏逻辑
+        // ==========================================
+        const gameCanvas = document.getElementById('gameCanvas');
+        const gctx = gameCanvas.getContext('2d');
+        const touchLayer = document.getElementById('touch-layer');
+        
+        let gameState = 'playing';
+        let animationId;
+        let lastTime = 0;
+        let groundY = 0;
+        let screenShake = 0;
+
+        let keys = {};
+        let touchLeft = false, touchRight = false, touchJump = false, touchAttack = false, touchBlock = false;
+        let activeTouches = {};
+
+        let particles = [];
+        let clouds = [];
+
+        class Fighter {
+            constructor(x, y, color, isPlayer) {
+                this.x = x; this.y = y; this.width = 40; this.height = 80;
+                this.color = color; this.isPlayer = isPlayer;
+                this.vx = 0; this.vy = 0; this.speed = 250; this.jumpForce = -600; this.gravity = 1500;
+                this.grounded = false; this.hp = 100; this.maxHp = 100;
+                this.facing = isPlayer ? 1 : -1;
+                this.isAttacking = false; this.attackTimer = 0; this.attackDuration = 0.4;
+                this.attackCooldown = 0; this.attackCooldownMax = 0.5;
+                this.isBlocking = false; this.blockTimer = 0;
+                this.isHit = false; this.hitTimer = 0; this.invincibleTimer = 0;
+                this.animTime = 0; this.swordLength = 45;
+                this.trail = []; 
+            }
+
+            update(dt) {
+                this.animTime += dt;
+                this.vy += this.gravity * dt;
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+
+                if (this.y + this.height / 2 >= groundY) {
+                    this.y = groundY - this.height / 2; this.vy = 0; this.grounded = true;
+                } else { this.grounded = false; }
+
+                this.x = Math.max(this.width / 2, Math.min(gameCanvas.width - this.width / 2, this.x));
+
+                if (this.isAttacking) {
+                    this.attackTimer += dt;
+                    if (this.attackTimer >= this.attackDuration) {
+                        this.isAttacking = false; this.attackTimer = 0; this.attackCooldown = this.attackCooldownMax;
+                    }
+                } else if (this.attackCooldown > 0) { this.attackCooldown -= dt; }
+
+                if (this.isBlocking) { this.vx *= 0.5; this.blockTimer += dt; } else { this.blockTimer = 0; }
+                if (this.isHit) { this.hitTimer += dt; if (this.hitTimer > 0.2) this.isHit = false; }
+                if (this.invincibleTimer > 0) this.invincibleTimer -= dt;
+                if (this.grounded && !this.isPlayer && !this.isBlocking) this.vx *= 0.8;
+
+                if (Math.abs(this.vx) > 50 || this.isAttacking) {
+                    this.trail.push({x: this.x, y: this.y, alpha: 0.5, facing: this.facing});
+                }
+                for (let i = this.trail.length - 1; i >= 0; i--) {
+                    this.trail[i].alpha -= dt * 2;
+                    if (this.trail[i].alpha <= 0) this.trail.splice(i, 1);
+                }
+            }
+
+            attack() {
+                if (!this.isAttacking && this.attackCooldown <= 0 && !this.isBlocking) {
+                    this.isAttacking = true; this.attackTimer = 0;
+                }
+            }
+            
+            toggleBlock(active) {
+                if (!this.isAttacking && !this.isHit) this.isBlocking = active;
+            }
+
+            takeDamage(amount, fromX) {
+                if (this.invincibleTimer > 0) return;
+                let finalDamage = amount;
+                let knockback = 300;
+                let vyKick = -200;
+
+                if (this.isBlocking) {
+                    let facingSource = (fromX > this.x) ? 1 : -1;
+                    if (this.facing === facingSource) {
+                        finalDamage = amount * 0.1; knockback = 50; vyKick = -50;
+                        for(let i=0; i<5; i++) particles.push(new Particle(this.x, this.y - 20, '#ffffff', 'spark'));
+                    }
+                }
+
+                this.hp -= finalDamage;
+                if (this.hp < 0) this.hp = 0;
+                
+                if (finalDamage > 1) {
+                    this.isHit = true; this.hitTimer = 0; this.invincibleTimer = 0.5;
+                    let knockbackDir = this.x > fromX ? 1 : -1;
+                    this.vx = knockbackDir * knockback; this.vy = vyKick; this.grounded = false;
+                    this.isBlocking = false;
+                    screenShake = 5;
+                    for(let i=0; i<10; i++) particles.push(new Particle(this.x, this.y, this.color === '#3b82f6' ? '#ef4444' : '#3b82f6', 'blood'));
+                }
+            }
+
+            getAttackBox() {
+                if (!this.isAttacking || this.attackTimer < 0.1 || this.attackTimer > 0.3) return null;
+                let ax = this.x + this.facing * (this.width / 2 + this.swordLength / 2);
+                let ay = this.y - 10;
+                return { x: ax, y: ay, width: this.swordLength, height: 30 };
+            }
+
+            getBodyBox() {
+                return { x: this.x - this.width / 2, y: this.y - this.height / 2, width: this.width, height: this.height };
+            }
+
+            draw(ctx) {
+                this.trail.forEach(t => {
+                    ctx.save(); ctx.translate(t.x, t.y); ctx.scale(t.facing, 1);
+                    ctx.globalAlpha = t.alpha * 0.3; ctx.fillStyle = this.color;
+                    ctx.fillRect(-12, -20, 24, 40); ctx.restore();
+                });
+
+                ctx.save(); ctx.translate(this.x, this.y);
+                if (this.invincibleTimer > 0 && Math.floor(this.invincibleTimer * 10) % 2 === 0) ctx.globalAlpha = 0.5;
+
+                let scale = this.facing; ctx.scale(scale, 1);
+                let bodyColor = this.color; let skinColor = '#fcd34d';
+                if (this.isHit) bodyColor = '#ffffff';
+
+                let legAngle = 0;
+                if (Math.abs(this.vx) > 10 && this.grounded) legAngle = Math.sin(this.animTime * 10) * 0.5;
+                else if (!this.grounded) legAngle = 0.3;
+
+                ctx.save(); ctx.translate(-5, 20); ctx.rotate(-legAngle);
+                ctx.fillStyle = bodyColor; ctx.fillRect(-4, 0, 8, 25); ctx.restore();
+
+                ctx.save(); ctx.translate(5, 20); ctx.rotate(legAngle);
+                ctx.fillStyle = bodyColor; ctx.fillRect(-4, 0, 8, 25); ctx.restore();
+
+                ctx.fillStyle = bodyColor; ctx.fillRect(-12, -20, 24, 40);
+                ctx.fillStyle = skinColor; ctx.beginPath(); ctx.arc(0, -32, 12, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#000'; ctx.fillRect(4, -35, 3, 3);
+
+                let armAngle = 0;
+                if (this.isAttacking) {
+                    let t = this.attackTimer / this.attackDuration;
+                    if (t < 0.3) armAngle = -1.5 + t * 5; else armAngle = 0;
+                } else if (this.isBlocking) { armAngle = -0.5; }
+                else { armAngle = Math.sin(this.animTime * 2) * 0.1; }
+
+                ctx.save(); ctx.translate(8, -10); ctx.rotate(armAngle);
+                ctx.fillStyle = skinColor; ctx.fillRect(0, -4, 15, 8);
+                ctx.fillStyle = '#e2e8f0'; ctx.fillRect(15, -2, this.swordLength, 4);
+                ctx.fillStyle = '#78350f'; ctx.fillRect(12, -5, 4, 10); ctx.restore();
+
+                ctx.save(); ctx.translate(-8, -10); ctx.rotate(-armAngle * 0.5);
+                ctx.fillStyle = skinColor; ctx.fillRect(-15, -4, 15, 8); ctx.restore();
+                
+                if (this.isBlocking) {
+                    ctx.strokeStyle = this.isPlayer ? 'rgba(59, 130, 246, 0.6)' : 'rgba(239, 68, 68, 0.6)';
+                    ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, -10, 40, 0, Math.PI * 2); ctx.stroke();
+                }
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color, type = 'normal') {
+                this.x = x; this.y = y; this.color = color; this.type = type;
+                if (type === 'spark') { this.vx = (Math.random() - 0.5) * 300; this.vy = (Math.random() - 0.5) * 300; this.life = 0.3; this.size = 2; }
+                else if (type === 'blood') { this.vx = (Math.random() - 0.5) * 200; this.vy = (Math.random() - 0.5) * 200 - 100; this.life = 0.5; this.size = Math.random() * 4 + 2; }
+                else { this.vx = (Math.random() - 0.5) * 50; this.vy = -50; this.life = 1.0; this.size = Math.random() * 20 + 10; }
+                this.maxLife = this.life;
+            }
+            update(dt) {
+                this.x += this.vx * dt; this.y += this.vy * dt;
+                if (this.type !== 'cloud') this.vy += 500 * dt;
+                this.life -= dt;
+            }
+            draw(ctx) {
+                ctx.globalAlpha = this.life / this.maxLife; ctx.fillStyle = this.color;
+                if (this.type === 'cloud') { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); }
+                else { ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size); }
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        let player, enemy;
+
+        function resizeGameCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            gameCanvas.width = window.innerWidth * dpr; gameCanvas.height = window.innerHeight * dpr;
+            gameCanvas.style.width = window.innerWidth + 'px'; gameCanvas.style.height = window.innerHeight + 'px';
+            gctx.scale(dpr, dpr); groundY = window.innerHeight - 80;
+        }
+        window.addEventListener('resize', resizeGameCanvas);
+
+        document.addEventListener('keydown', (e) => { 
+            keys[e.key.toLowerCase()] = true; 
+            if (e.key === 's' || e.key === 'ArrowDown') player.toggleBlock(true);
+        });
+        document.addEventListener('keyup', (e) => { 
+            keys[e.key.toLowerCase()] = false; 
+            if (e.key === 's' || e.key === 'ArrowDown') player.toggleBlock(false);
+        });
+
+        gameCanvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            for (let t of e.changedTouches) {
+                activeTouches[t.identifier] = { x: t.clientX, y: t.clientY };
+                createTouchFeedback(t.clientX, t.clientY);
+                handleTouchAction(t.clientX, t.clientY, true);
+            }
+        }, { passive: false });
+
+        gameCanvas.addEventListener('touchmove', (e) => {
+            e.preventDefault(); touchLeft = false; touchRight = false;
+            for (let t of e.changedTouches) activeTouches[t.identifier] = { x: t.clientX, y: t.clientY };
+            for (let id in activeTouches) {
+                let tx = activeTouches[id].x;
+                if (tx < window.innerWidth / 2) { if (tx < window.innerWidth / 4) touchLeft = true; else touchRight = true; }
+            }
+        }, { passive: false });
+
+        gameCanvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            for (let t of e.changedTouches) { delete activeTouches[t.identifier]; removeTouchFeedback(t.identifier); }
+            let rightTouches = 0;
+            for (let id in activeTouches) { if (activeTouches[id].x > window.innerWidth / 2) rightTouches++; }
+            touchBlock = rightTouches >= 2; player.toggleBlock(touchBlock);
+            if (Object.keys(activeTouches).length === 0) { touchLeft = false; touchRight = false; }
+        }, { passive: false });
+
+        function handleTouchAction(x, y, isStart) {
+            if (x > window.innerWidth / 2) {
+                if (isStart) {
+                    let rightCount = 0;
+                    for(let id in activeTouches) { if(activeTouches[id].x > window.innerWidth/2) rightCount++; }
+                    if (rightCount >= 2) { touchBlock = true; player.toggleBlock(true); }
+                    else if (y < window.innerHeight / 2) { touchJump = true; }
+                    else { touchAttack = true; }
+                }
+            } else { if (x < window.innerWidth / 4) touchLeft = true; else touchRight = true; }
+        }
+        
+        function createTouchFeedback(x, y) {
+            const el = document.createElement('div'); el.className = 'touch-feedback active';
+            el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.width = '50px'; el.style.height = '50px';
+            el.id = 'touch-' + Date.now(); touchLayer.appendChild(el);
+        }
+        
+        function removeTouchFeedback(id) {
+            const feedbacks = document.querySelectorAll('.touch-feedback');
+            feedbacks.forEach(f => { f.classList.remove('active'); setTimeout(() => f.remove(), 200); });
+        }
+
+        function initGame() {
+            resizeGameCanvas(); gameState = 'playing'; particles = []; clouds = [];
+            for(let i=0; i<5; i++) clouds.push(new Particle(Math.random()*window.innerWidth, Math.random()*window.innerHeight/2, 'rgba(255,255,255,0.05)', 'cloud'));
+            player = new Fighter(window.innerWidth * 0.3, groundY - 40, '#3b82f6', true);
+            enemy = new Fighter(window.innerWidth * 0.7, groundY - 40, '#ef4444', false);
+            updateHUD(); document.getElementById('game-over-screen').classList.remove('active');
+            lastTime = performance.now(); gameLoop(lastTime);
+        }
+
+        function updateHUD() {
+            document.getElementById('player-hp-fill').style.width = `${player.hp}%`;
+            document.getElementById('enemy-hp-fill').style.width = `${enemy.hp}%`;
+        }
+
+        function updatePlayer(dt) {
+            let moveDir = 0;
+            if (keys['a'] || keys['arrowleft'] || touchLeft) moveDir -= 1;
+            if (keys['d'] || keys['arrowright'] || touchRight) moveDir += 1;
+            if (moveDir !== 0 && !player.isBlocking) { player.vx = moveDir * player.speed; player.facing = moveDir; }
+            else if (!player.isBlocking) { player.vx *= 0.8; }
+            if ((keys['w'] || keys['arrowup'] || keys[' '] || touchJump) && player.grounded && !player.isBlocking) {
+                player.vy = player.jumpForce; player.grounded = false; touchJump = false;
+            }
+            if (keys['j'] || touchAttack) { player.attack(); touchAttack = false; }
+        }
+
+        function updateEnemyAI(dt) {
+            let dx = player.x - enemy.x; let dist = Math.abs(dx); enemy.facing = dx > 0 ? 1 : -1;
+            if (dist > 100) {
+                enemy.vx = enemy.facing * enemy.speed * 0.9;
+                if (Math.random() < 0.01 && enemy.grounded) enemy.vy = enemy.jumpForce;
+                enemy.toggleBlock(false);
+            } else if (dist < 60) {
+                enemy.vx *= 0.8;
+                if (!enemy.isAttacking && Math.random() < 0.05) enemy.attack();
+                if (player.isAttacking && Math.random() < 0.3) enemy.toggleBlock(true); else enemy.toggleBlock(false);
+            } else {
+                enemy.vx *= 0.9;
+                if (player.isAttacking && Math.random() < 0.1) enemy.attack();
+            }
+        }
+
+        function checkCollisions() {
+            let pAtk = player.getAttackBox(); let eBody = enemy.getBodyBox();
+            if (pAtk && boxCollide(pAtk, eBody)) { enemy.takeDamage(10, player.x); updateHUD(); }
+            let eAtk = enemy.getAttackBox(); let pBody = player.getBodyBox();
+            if (eAtk && boxCollide(eAtk, pBody)) { player.takeDamage(8, enemy.x); updateHUD(); }
+        }
+
+        function boxCollide(a, b) {
+            return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+        }
+
+        function drawBackground() {
+            let gradient = gctx.createLinearGradient(0, 0, 0, window.innerHeight);
+            gradient.addColorStop(0, '#0f172a'); gradient.addColorStop(1, '#1e1b4b');
+            gctx.fillStyle = gradient; gctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+            clouds.forEach(c => { c.update(0.016); if(c.x < -50) c.x = window.innerWidth + 50; c.draw(gctx); });
+            gctx.fillStyle = '#334155'; gctx.fillRect(0, groundY, window.innerWidth, window.innerHeight - groundY);
+            gctx.strokeStyle = '#475569'; gctx.lineWidth = 2; gctx.beginPath(); gctx.moveTo(0, groundY); gctx.lineTo(window.innerWidth, groundY); gctx.stroke();
+        }
+
+        function gameLoop(timestamp) {
+            if (gameState !== 'playing' && gameState !== 'over') return;
+            let dt = (timestamp - lastTime) / 1000; if (dt > 0.1) dt = 0.1; lastTime = timestamp;
+            let shakeX = 0, shakeY = 0;
+            if (screenShake > 0) { shakeX = (Math.random() - 0.5) * screenShake; shakeY = (Math.random() - 0.5) * screenShake; screenShake *= 0.9; if(screenShake < 0.5) screenShake = 0; }
+            gctx.save(); gctx.translate(shakeX, shakeY);
+            if (gameState === 'playing') {
+                updatePlayer(dt); updateEnemyAI(dt); player.update(dt); enemy.update(dt); checkCollisions();
+                for (let i = particles.length - 1; i >= 0; i--) { particles[i].update(dt); if (particles[i].life <= 0) particles.splice(i, 1); }
+                if (player.hp <= 0 || enemy.hp <= 0) {
+                    gameState = 'over';
+                    let resultText = document.getElementById('result-text'); let resultDesc = document.getElementById('result-desc');
+                    if (player.hp <= 0) { resultText.innerText = "DEFEAT"; resultText.style.color = "#ef4444"; resultDesc.innerText = "邪气未除，再接再厉"; }
+                    else { resultText.innerText = "VICTORY"; resultText.style.color = "#fbbf24"; resultDesc.innerText = "蓝氏清名，威震四方"; }
+                    document.getElementById('game-over-screen').classList.add('active');
+                }
+            }
+            drawBackground(); particles.forEach(p => p.draw(gctx)); player.draw(gctx); enemy.draw(gctx); gctx.restore();
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function restartGame() { initGame(); }
+
+    </script>
+
+
+</body></html>
